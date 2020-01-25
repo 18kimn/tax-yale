@@ -85,7 +85,7 @@ map(remaining_urls, scrape_property_data)
 
 full_df <- map(list.files("property_info/", full.names=T), function(x){
   print(x) 
-  df <- readRDS(x) %>% tbl_df
+  df <- readRDS(x) %>% tbl_df %>% 
     mutate_all(as.character)
   return(df)
   }
