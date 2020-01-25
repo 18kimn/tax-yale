@@ -8,6 +8,8 @@ library(magrittr)
 #Still, I guess this is a useful thing anyhow to get non-Yale data -- i.e. on UNH, quinnipiac, real estate immediately surrounding yale, etc... 
 base_url <- "http://gis.vgsi.com/newhavenct/"
 urls <- paste0(base_url, "Streets.aspx?Letter=", LETTERS)
+
+
 #get_url(url) goes to url and gets all of the links on there 
 get_url <- function(url){
   read_html(url) %>% 
@@ -91,3 +93,5 @@ full_df <- map(list.files("property_info/", full.names=T), function(x){
   }
 ) %>% reduce(vec_rbind)
 
+full_df <- full_df %>% mutate(City = "New Haven", State = "Connecticut", Zip = "") %>% rename(Address = address)
+write_csv(full_df, "full_df.csv")
