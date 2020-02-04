@@ -1,0 +1,27 @@
+---
+title: "attach_names"
+author: "John Park"
+date: "2/4/2020"
+output: html_document
+---
+```{r}
+library(tidyverse)
+```
+```{r}
+yale_df <- read.csv("property_directory.csv") %>% as_tibble
+full_df <- readRDS("full_df.RDS")
+```
+```{r}
+yale_df$address <- 
+  yale_df$address %>% 
+  str_remove(", New Haven, CT") %>% 
+  toupper() %>% 
+  str_trim()
+```
+
+```{r}
+yale_full <- full_df %>% dplyr::filter(grepl("YALE", owner))
+
+yale_full %>% left_join(yale_df)
+```
+
