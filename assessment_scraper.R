@@ -3,7 +3,7 @@ library(tidyverse)
 library(rvest)
 library(magrittr) 
 
-#This is not a very "nice" way to scrape the website as in it goes to every property to obtain information for every single building in New Haven. I couldn't get R to send a POST request for just Yale-owned buildings.
+#This is not a very "nice" way to scrape the website as in it goes to every property to obtain information for every single building in New Haven. I couldn't get R to send a request for just Yale-owned buildings.
 
 #Still, I guess this is a useful thing anyhow to get non-Yale data -- i.e. on UNH, quinnipiac, real estate immediately surrounding yale, etc... 
 base_url <- "http://gis.vgsi.com/newhavenct/"

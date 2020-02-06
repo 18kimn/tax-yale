@@ -13,9 +13,10 @@ api_key <- "defccb796c34447fbfeb512590482e0c"
 
 raw_url <- "https://geoservices.tamu.edu/Services/Geocode/WebService/GeocoderWebServiceHttpNonParsed_V04_01.aspx?"
 
-paulimurray <- GET(url = raw_url, query = list(apiKey = api_key, version = "4.01", 
-    streetAddress = "70 Sachem Street", city = "New Haven", 
-    state = "CT"))
+#just trying stuff out
+# paulimurray <- GET(url = raw_url, query = list(apiKey = api_key, version = "4.01", 
+#     streetAddress = "70 Sachem Street", city = "New Haven", 
+#     state = "CT"))
 
 geocode <- function(address){
   raw_result <- GET(url = raw_url, query = list(apiKey = api_key, version = "4.01", 
