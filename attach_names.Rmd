@@ -6,8 +6,6 @@ output: html_document
 ---
 ```{r}
 library(tidyverse)
-```
-```{r}
 yale_df <- read.csv("property_directory.csv") %>% as_tibble
 full_df <- readRDS("full_df.RDS")
 ```
@@ -16,12 +14,31 @@ yale_df$address <-
   yale_df$address %>% 
   str_remove(", New Haven, CT") %>% 
   toupper() %>% 
-  str_trim()
+  str_trim() %>% 
+  str_replace("AVENUE", "AV") %>% 
+  str_replace("STREET", "ST") %>% 
+  str_replace("DRIVE", "DR") %>% 
+  str_replace("PLACE", "PL")
+
+yale_full <- full_df %>% dplyr::filter(grepl("YALE", owner))
 ```
 
 ```{r}
-yale_full <- full_df %>% dplyr::filter(grepl("YALE", owner))
-
-yale_full %>% left_join(yale_df)
+yale_full %>% 
+  left_join(yale_df, by="address") %>% select(names, address, everything()) %>% 
+  as.data.frame() %>% 
+  write.csv("yale_addresses_with_names.csv", row.names=FALSE)
 ```
+
+```{r}
+yale_df %>% filter(grepl("TRUMBULL", address))
+```
+
+
+
+
+
+
+
+
 
