@@ -38,4 +38,4 @@ df$address <- str_replace_all(df$address, "  ", "")
 df <- df %>% 
   dplyr::filter(grepl("New Haven", address))
 
-write.csv(df, "property_directory.csv", row.names=FALSE)
+write.csv(df, "data/clean/yale.edu-directory.csv", row.names=FALSE)
