@@ -12,10 +12,9 @@ library(tidyverse)
 Merge OPM and geocoder_output
 ```{r}
 OPM_nhv_only <- read.csv(here::here("data/OPM data/OPM-nhv_only.csv"))
-
 geocoder_output <- read.csv(here::here("data/OPM data/geocoder_output.csv"))
-
 OPM_nhv_only_geocoded <- cbind(OPM_nhv_only, geocoder_output)
+OPM_nhv_only_geocoded$FIPS <- ifelse(is.na(OPM_nhv_only_geocoded$State), NA, paste0("09009", OPM_nhv_only_geocoded$Tract))
 write.csv(OPM_nhv_only_geocoded, here::here("data/OPM data/OPM_nhv_only_geocoded.csv"))
 ```
 
@@ -24,8 +23,7 @@ Choose non-matches + certain variables for manual edits
 manual_edits <- OPM_nhv_only_geocoded %>% 
   as_tibble() %>% 
   dplyr::filter(Match != "Match") %>% 
-  select(Unique.ID, Address, Owner.Or.Facility, ID, Match, Coords, State, County, Tract, Block)
+  select(Unique.ID, Address_in, Owner.Or.Facility, Land.Assessment, Building.Assessment, ID, Match, Coords, FIPS)
 write.csv(as.data.frame(manual_edits), here::here("data/OPM data/manual_edits.csv"))
-manual_edits %>% names()
 ```
 
