@@ -10,6 +10,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 ```{r}
 library(tidyverse)
+library(sf)
+library(sp)
 ```
 
 ## NHV property data (all 2017 numbers)
@@ -53,38 +55,12 @@ dixwell_df %>% arrange(desc(assessment))
 
 ## Newhallville
 ```{r}
-nhville_df<- full_df %>% 
-  filter(str_detect(address, "DIXWELL")) %>% 
-  select(address, owner, pid)
-file <- paste0("../data/raw/property/valuations/", 102283, ".RDS")
-
-get_geocode <- function(pid) {
-  file <- paste0("../data/raw/geocodes", pid, ".RDS")
-  geocode <- readRDS(file)[[1]] %>% 
-    dplyr::filter(`Valuation Year` == 2017) %>% 
-    select(Total)
-  return(assessment$Total)
-}
-
-readRDS("../data/raw/geocodes/1 BROADWAY.RDS")
-
-dixwell_df <- dixwell_raw %>% 
-  mutate(assessment = map(.$pid, get_ass) %>% unlist()) %>% 
-  mutate(assessment = parse_number(assessment)) %>% 
-  mutate(assessment = as.numeric(assessment)) %>% 
-  mutate(tax = assessment * 0.4298) %>% 
-  mutate_if(is.character, tolower) %>% 
-  filter(!str_detect(owner, non_tax))
-
-dixwell_df %>% summarize(tot = sum(tax))
-
-relig <- c("churc", "prayer", "congreg", "baptist", "varic", "catholic", "praise", "deliverance")
-other <- c("yale", "city of", "cit of", "preparatory", "cornell scott", "")
-non_tax <- c(relig, other) %>%
-  paste(collapse = "|") %>% 
-  substr(0, nchar(.)-1)
-
-dixwell_df %>% arrange(desc(assessment))
+adds <- read_csv("data/nhv_addresses.csv") %>% 
+  dplyr::select(-`Unique ID`, -City, -State, -ZIP)
+rawproperties <- read_sf(dsn="arcgis_output/nhv_addresses_GeocodeAddress.shp") %>% 
+  bind_cols(adds) %>% 
+  st_transform(crs=proj.out) %>% 
+  bind_cols(properties)
 ```
 
 
