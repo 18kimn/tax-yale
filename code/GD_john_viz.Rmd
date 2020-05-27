@@ -17,24 +17,45 @@ library(sp)
 ## NHV property data (all 2017 numbers)
 ```{r}
 full_df <- readRDS("../data/raw/property/full_df.RDS")
+
+# function to get assessment
+get_ass <- function(pid) {
+  file <- paste0("../data/raw/property/valuations/", pid, ".RDS")
+  dat <- readRDS(file)[[1]] 
+  if(dat[1,1] != "No Data for Assessment History") {
+    assessment <- dat %>% 
+      dplyr::filter(`Valuation Year` == 2017) %>% 
+      select(Total)
+    return(assessment$Total)
+  }
+  else return(NA)
+}
+
+# non-tax paying properties
+relig <- c("churc", "prayer", "congreg", "baptist", "varic", "catholic", 
+           "praise", "deliverance", "chapel", "saint", "pentec", "methodi",
+           "parish", "st luke")
+other <- c("yale", "city of", "cit of", "preparatory", "prepatory", "cornell scott")
+non_tax <- c(relig, other) %>%
+  paste(collapse = "|") %>% 
+  substr(0, nchar(.)-1)
+
+# use sds674 files for point to address
+adds <- read_csv("../data/sds674/nhv_addresses.csv") %>% 
+  dplyr::select(-`Unique ID`, -City, -State, -ZIP)
+properties <- read_csv("../data/sds674/property_info.csv")
+rawproperties <- read_sf(dsn="../data/sds674/arcgis_output/nhv_addresses_GeocodeAddress.shp") %>% 
+  bind_cols(adds) %>% 
+  bind_cols(properties)
 ```
 
 ## Dixwell Ave.
 ```{r}
-dixwell_raw <- full_df %>% 
+dixwellave_raw <- full_df %>% 
   filter(str_detect(address, "DIXWELL")) %>% 
   select(address, owner, pid)
-file <- paste0("../data/raw/property/valuations/", 102283, ".RDS")
 
-get_ass <- function(pid) {
-  file <- paste0("../data/raw/property/valuations/", pid, ".RDS")
-  assessment <- readRDS(file)[[1]] %>% 
-    dplyr::filter(`Valuation Year` == 2017) %>% 
-    select(Total)
-  return(assessment$Total)
-}
-
-dixwell_df <- dixwell_raw %>% 
+dixwellave_df <- dixwellave_raw %>% 
   mutate(assessment = map(.$pid, get_ass) %>% unlist()) %>% 
   mutate(assessment = parse_number(assessment)) %>% 
   mutate(assessment = as.numeric(assessment)) %>% 
@@ -42,26 +63,80 @@ dixwell_df <- dixwell_raw %>%
   mutate_if(is.character, tolower) %>% 
   filter(!str_detect(owner, non_tax))
 
-dixwell_df %>% summarize(tot = sum(tax))
+dixwellave_df %>% summarize(tot = sum(tax))
 
-relig <- c("churc", "prayer", "congreg", "baptist", "varic", "catholic", "praise", "deliverance")
-other <- c("yale", "city of", "cit of", "preparatory", "cornell scott", "")
-non_tax <- c(relig, other) %>%
-  paste(collapse = "|") %>% 
+# dixwellave_df %>% arrange(desc(assessment))
+```
+
+## Dixwell
+```{r}
+dixwell_sf <- cwi::new_haven_sf %>% filter(name == "Dixwell")
+dixwell_raw <- rawproperties[which(st_within(rawproperties$geometry, dixwell_sf) %>% 
+  as.numeric()==1),] %>% 
+  as_tibble() %>% 
+  select(address, owner) %>% 
+  left_join(full_df) %>% # go back to using full_df (contains pid)
+  select(address, owner, pid) %>% 
+  drop_na()
+
+xtra_non_tax <- c("state of connecticut", 
+                  "neighborhood housing services",
+                  "youth continuum inc", "land trust", non_tax) %>% 
+  paste(collapse="|") %>% 
   substr(0, nchar(.)-1)
+
+dixwell_df <- dixwell_raw %>% 
+  mutate(assessment = map(.$pid, get_ass) %>% unlist()) %>% 
+  mutate(assessment = parse_number(assessment)) %>% 
+  mutate(assessment = as.numeric(assessment)) %>% 
+  mutate(tax = assessment * 0.4298) %>% 
+  mutate_if(is.character, tolower) %>% 
+  filter(!str_detect(owner, xtra_non_tax)) %>% 
+  drop_na()
+
+dixwell_df %>% summarize(tot = sum(tax))
 
 dixwell_df %>% arrange(desc(assessment))
 ```
 
+
 ## Newhallville
 ```{r}
-adds <- read_csv("data/nhv_addresses.csv") %>% 
+nhville_sf <- cwi::new_haven_sf %>% filter(name == "Newhallville")
+adds <- read_csv("../data/sds674/nhv_addresses.csv") %>% 
   dplyr::select(-`Unique ID`, -City, -State, -ZIP)
-rawproperties <- read_sf(dsn="arcgis_output/nhv_addresses_GeocodeAddress.shp") %>% 
+properties <- read_csv("../data/sds674/property_info.csv")
+rawproperties <- read_sf(dsn="../data/sds674/arcgis_output/nhv_addresses_GeocodeAddress.shp") %>% 
   bind_cols(adds) %>% 
-  st_transform(crs=proj.out) %>% 
   bind_cols(properties)
+nhville_raw <- rawproperties[which(st_within(rawproperties$geometry, nhville_sf) %>% 
+  as.numeric()==1),] %>% 
+  as_tibble() %>% 
+  select(address, owner) %>% 
+  left_join(full_df) %>% # go back to using full_df (contains pid)
+  select(address, owner, pid) %>% 
+  drop_na()
+
+xtra_non_tax <- c("mutual housing association of south cent", 
+                  "housing authority of new haven",
+                  "youth continuum inc", "land trust", non_tax) %>% 
+  paste(collapse="|") %>% 
+  substr(0, nchar(.)-1)
+
+nhville_df <- nhville_raw %>% 
+  mutate(assessment = map(.$pid, get_ass) %>% unlist()) %>% 
+  mutate(assessment = parse_number(assessment)) %>% 
+  mutate(assessment = as.numeric(assessment)) %>% 
+  mutate(tax = assessment * 0.4298) %>% 
+  mutate_if(is.character, tolower) %>% 
+  filter(!str_detect(owner, xtra_non_tax)) %>% 
+  drop_na()
+
+nhville_df %>% summarize(tot = sum(tax))
+
+nhville_df %>% arrange(desc(assessment))
 ```
+
 
 
 ## GD Data
@@ -76,7 +151,7 @@ df <- raw %>% select(exemption = current_tax_exemption, year=year_built) %>%
 ```
 
 ```{r}
-ref_1 <- dixwell_df %>% summarize(tot = sum(tax)) %>% unlist()
+ref_1 <- dixwellave_df %>% summarize(tot = sum(tax)) %>% unlist()
 
 df %>% 
   ggplot(aes(x=year, y=val)) +
@@ -92,7 +167,7 @@ df %>%
   geom_point(color = "gray30", size = 4) +
   theme(legend.position = "none",
         plot.caption = element_text(margin = margin(2, 2, 1, 0, "lines"))) +
-    labs(x = NULL, y = "Tax Exemption (cumulative)",
+    labs(x = "built in (cumulative)", y = "Tax exemption (2017)",
        title = "Tax exemption of Yale properties acquired during the Great Depression",
        subtitle = "Surpass reference 2",
        caption = "Source: City of New Haven") +
