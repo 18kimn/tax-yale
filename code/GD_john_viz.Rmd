@@ -38,7 +38,12 @@ relig <- c("churc", "prayer", "congreg", "baptist", "varic", "catholic",
 other <- c("yale", "city of", "cit of", "preparatory", "prepatory", "cornell scott")
 non_tax <- c(relig, other) %>%
   paste(collapse = "|") %>% 
-  substr(0, nchar(.)-1)
+  substr(0, nchar(.))
+
+# non-residential properties
+non_res <- c("llc", "partners", "conference", "inc", "supreme") %>% 
+  paste(collapse="|") %>% 
+  substr(0, nchar(.))
 
 # use sds674 files for point to address
 adds <- read_csv("../data/sds674/nhv_addresses.csv") %>% 
@@ -47,25 +52,6 @@ properties <- read_csv("../data/sds674/property_info.csv")
 rawproperties <- read_sf(dsn="../data/sds674/arcgis_output/nhv_addresses_GeocodeAddress.shp") %>% 
   bind_cols(adds) %>% 
   bind_cols(properties)
-```
-
-## Dixwell Ave.
-```{r}
-dixwellave_raw <- full_df %>% 
-  filter(str_detect(address, "DIXWELL")) %>% 
-  select(address, owner, pid)
-
-dixwellave_df <- dixwellave_raw %>% 
-  mutate(assessment = map(.$pid, get_ass) %>% unlist()) %>% 
-  mutate(assessment = parse_number(assessment)) %>% 
-  mutate(assessment = as.numeric(assessment)) %>% 
-  mutate(tax = assessment * 0.4298) %>% 
-  mutate_if(is.character, tolower) %>% 
-  filter(!str_detect(owner, non_tax))
-
-dixwellave_df %>% summarize(tot = sum(tax))
-
-# dixwellave_df %>% arrange(desc(assessment))
 ```
 
 ## Dixwell
@@ -103,12 +89,6 @@ dixwell_df %>% arrange(desc(assessment))
 ## Newhallville
 ```{r}
 nhville_sf <- cwi::new_haven_sf %>% filter(name == "Newhallville")
-adds <- read_csv("../data/sds674/nhv_addresses.csv") %>% 
-  dplyr::select(-`Unique ID`, -City, -State, -ZIP)
-properties <- read_csv("../data/sds674/property_info.csv")
-rawproperties <- read_sf(dsn="../data/sds674/arcgis_output/nhv_addresses_GeocodeAddress.shp") %>% 
-  bind_cols(adds) %>% 
-  bind_cols(properties)
 nhville_raw <- rawproperties[which(st_within(rawproperties$geometry, nhville_sf) %>% 
   as.numeric()==1),] %>% 
   as_tibble() %>% 
@@ -119,7 +99,8 @@ nhville_raw <- rawproperties[which(st_within(rawproperties$geometry, nhville_sf)
 
 xtra_non_tax <- c("mutual housing association of south cent", 
                   "housing authority of new haven",
-                  "youth continuum inc", "land trust", non_tax) %>% 
+                  "youth continuum inc", "land trust", "empowerment",
+                  non_tax) %>% 
   paste(collapse="|") %>% 
   substr(0, nchar(.)-1)
 
@@ -133,11 +114,38 @@ nhville_df <- nhville_raw %>%
   drop_na()
 
 nhville_df %>% summarize(tot = sum(tax))
-
 nhville_df %>% arrange(desc(assessment))
+
+nhville_df_res <- nhville_df %>% 
+  filter(!str_detect(owner, non_res))
+
+nhville_df_res %>% summarize(tot = sum(tax))
+nhville_df_res %>% arrange(desc(assessment))
 ```
 
+## Dixwell Ave.
+```{r}
+dixwellave_raw <- full_df %>% 
+  filter(str_detect(address, "DIXWELL")) %>% 
+  select(address, owner, pid)
 
+dixwellave_df <- dixwellave_raw %>% 
+  mutate(assessment = map(.$pid, get_ass) %>% unlist()) %>% 
+  mutate(assessment = parse_number(assessment)) %>% 
+  mutate(assessment = as.numeric(assessment)) %>% 
+  mutate(tax = assessment * 0.4298) %>% 
+  mutate_if(is.character, tolower) %>% 
+  filter(!str_detect(owner, non_tax))
+
+dixwellave_df %>% summarize(tot = sum(tax))
+dixwellave_df %>% arrange(desc(assessment))
+
+dixwellave_df_res <- dixwellave_df %>% 
+  filter(!str_detect(owner, non_res))
+
+dixwellave_df_res %>% summarize(tot = sum(tax))
+dixwellave_df_res %>% arrange(desc(assessment))
+```
 
 ## GD Data
 ```{r}
@@ -147,31 +155,32 @@ df <- raw %>% select(exemption = current_tax_exemption, year=year_built) %>%
   drop_na() %>% 
   group_by(year) %>% 
   summarise(val=sum(exemption)) %>% 
-  mutate(val=cumsum(val))
+  mutate(cum_val=cumsum(val))
 ```
 
 ```{r}
-ref_1 <- dixwellave_df %>% summarize(tot = sum(tax)) %>% unlist()
+ref_1 <- dixwellave_df_res %>% summarize(tot = sum(tax)) %>% unlist()
+ref_2 <- 2500000
 
 df %>% 
   ggplot(aes(x=year, y=val)) +
-  geom_rect(aes(xmin=lag(year), xmax=year, ymin=0, ymax=Inf, alpha=0.7)) +
   geom_vline(aes(xintercept = year), color = "white", size = 0.4) +
-  geom_hline(aes(yintercept = ref_1), 
-             color = "gray50", size = 0.7, linetype = "22") +
-  geom_text(aes(label = "Property tax of all buildings\non Dixwell Ave in NHV, 2017.", x = 1935, y = ref_1),
-            hjust = 0.75, vjust = 1.5, color = "gray20", size = 2.5) +
-  geom_hline(aes(yintercept = 25e6), color = "gray50", size = 0.7, linetype = "22") +
-  geom_text(aes(label = "reference 2", x = 1935, y = 25e6),
-            hjust = 0.75, vjust = 2, color = "gray20", nudge_y = -20, nudge_x = 0, size = 2.5) +
+  geom_hline(aes(yintercept = ref_1), color = "blue", size = 0.7, linetype = "22") +
+  geom_text(aes(label = "Property tax of all NHV residential\nbuildings on Dixwell Ave, 2017.", x = 1935, y = ref_1),
+            hjust = 0.9, vjust = -0.75, color = "blue", size = 2.5) +
+  geom_hline(aes(yintercept = ref_2), color = "red", size = 0.7, linetype = "22") +
+  geom_text(aes(label = "reference 2", x = 1935, y = ref_2),
+            hjust = 0.75, vjust = -2, color = "red", nudge_y = -20, nudge_x = 0, size = 2.5) +
   geom_point(color = "gray30", size = 4) +
   theme(legend.position = "none",
         plot.caption = element_text(margin = margin(2, 2, 1, 0, "lines"))) +
-    labs(x = "built in (cumulative)", y = "Tax exemption (2017)",
-       title = "Tax exemption of Yale properties acquired during the Great Depression",
-       subtitle = "Surpass reference 2",
+    labs(x = "", y = "Tax exemption (2017)",
+       title = "Tax exemption of Yale properties built during the Great Depression",
+       subtitle = "subtitle",
        caption = "Source: City of New Haven") +
   scale_x_continuous(breaks = seq(1929, 1935, by = 1)) +
   scale_y_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6))
 ```
+
+
 
