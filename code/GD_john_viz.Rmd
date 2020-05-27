@@ -15,7 +15,10 @@ library(tidyverse)
 ## NHV property data (all 2017 numbers)
 ```{r}
 full_df <- readRDS("../data/raw/property/full_df.RDS")
+```
 
+## Dixwell Ave.
+```{r}
 dixwell_raw <- full_df %>% 
   filter(str_detect(address, "DIXWELL")) %>% 
   select(address, owner, pid)
@@ -34,12 +37,55 @@ dixwell_df <- dixwell_raw %>%
   mutate(assessment = parse_number(assessment)) %>% 
   mutate(assessment = as.numeric(assessment)) %>% 
   mutate(tax = assessment * 0.4298) %>% 
-  filter(!str_detect(owner, c("YALE|CITY OF|CIT OF")))
+  mutate_if(is.character, tolower) %>% 
+  filter(!str_detect(owner, non_tax))
 
 dixwell_df %>% summarize(tot = sum(tax))
+
+relig <- c("churc", "prayer", "congreg", "baptist", "varic", "catholic", "praise", "deliverance")
+other <- c("yale", "city of", "cit of", "preparatory", "cornell scott", "")
+non_tax <- c(relig, other) %>%
+  paste(collapse = "|") %>% 
+  substr(0, nchar(.)-1)
+
+dixwell_df %>% arrange(desc(assessment))
 ```
 
+## Newhallville
+```{r}
+nhville_df<- full_df %>% 
+  filter(str_detect(address, "DIXWELL")) %>% 
+  select(address, owner, pid)
+file <- paste0("../data/raw/property/valuations/", 102283, ".RDS")
 
+get_geocode <- function(pid) {
+  file <- paste0("../data/raw/geocodes", pid, ".RDS")
+  geocode <- readRDS(file)[[1]] %>% 
+    dplyr::filter(`Valuation Year` == 2017) %>% 
+    select(Total)
+  return(assessment$Total)
+}
+
+readRDS("../data/raw/geocodes/1 BROADWAY.RDS")
+
+dixwell_df <- dixwell_raw %>% 
+  mutate(assessment = map(.$pid, get_ass) %>% unlist()) %>% 
+  mutate(assessment = parse_number(assessment)) %>% 
+  mutate(assessment = as.numeric(assessment)) %>% 
+  mutate(tax = assessment * 0.4298) %>% 
+  mutate_if(is.character, tolower) %>% 
+  filter(!str_detect(owner, non_tax))
+
+dixwell_df %>% summarize(tot = sum(tax))
+
+relig <- c("churc", "prayer", "congreg", "baptist", "varic", "catholic", "praise", "deliverance")
+other <- c("yale", "city of", "cit of", "preparatory", "cornell scott", "")
+non_tax <- c(relig, other) %>%
+  paste(collapse = "|") %>% 
+  substr(0, nchar(.)-1)
+
+dixwell_df %>% arrange(desc(assessment))
+```
 
 
 ## GD Data
@@ -54,13 +100,16 @@ df <- raw %>% select(exemption = current_tax_exemption, year=year_built) %>%
 ```
 
 ```{r}
+ref_1 <- dixwell_df %>% summarize(tot = sum(tax)) %>% unlist()
+
 df %>% 
   ggplot(aes(x=year, y=val)) +
   geom_rect(aes(xmin=lag(year), xmax=year, ymin=0, ymax=Inf, alpha=0.7)) +
   geom_vline(aes(xintercept = year), color = "white", size = 0.4) +
-  geom_hline(aes(yintercept = 20e6), color = "gray50", size = 0.7, linetype = "22") +
-  geom_text(aes(label = "reference 1", x = 1935, y = 20e6),
-            hjust = 0.75, vjust = 2, color = "gray20", nudge_y = -20, nudge_x = 0, size = 2.5) +
+  geom_hline(aes(yintercept = ref_1), 
+             color = "gray50", size = 0.7, linetype = "22") +
+  geom_text(aes(label = "Property tax of all buildings\non Dixwell Ave in NHV, 2017.", x = 1935, y = ref_1),
+            hjust = 0.75, vjust = 1.5, color = "gray20", size = 2.5) +
   geom_hline(aes(yintercept = 25e6), color = "gray50", size = 0.7, linetype = "22") +
   geom_text(aes(label = "reference 2", x = 1935, y = 25e6),
             hjust = 0.75, vjust = 2, color = "gray20", nudge_y = -20, nudge_x = 0, size = 2.5) +
@@ -74,44 +123,4 @@ df %>%
   scale_x_continuous(breaks = seq(1929, 1935, by = 1)) +
   scale_y_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6))
 ```
-
-
-```{r}
-plt <- ct_proj %>%
-  mutate(lbl = map_chr(avoid_deaths_rnd, thousands)) %>%
-  ggplot(aes(x = date, y = avoid_deaths_rnd)) +
-  geom_rect(aes(xmin = lag(date), xmax = date, ymin = 0, ymax = Inf, fill = as.factor(days)), alpha = 0.7) +
-  # geom_hline(aes(yintercept = cumul_deaths),
-  #            data = lcod_lbls, color = "gray50", size = 0.7, linetype = "22") +
-  geom_vline(aes(xintercept = date), color = "white", size = 0.4) +
-  geom_segment(aes(xend = date0, y = cumul_deaths, yend = cumul_deaths),
-               data = lcod_lbls, color = "gray50", size = 0.7, linetype = "22") +
-  geom_text(aes(label = lbl, y = cumul_deaths),
-            data = lcod_lbls, hjust = 1, vjust = 1, family = "barcond", color = "gray20", nudge_y = -150, nudge_x = -1, size = 2.6) +
-  geom_line(color = "gray30", size = 2) +
-  geom_point(color = "gray30", size = 8, 
-             data = . %>% filter(days > 0)) +
-  geom_text(aes(label = lbl), color = "white", size = 3, fontface = "bold", family = "barcond", 
-            data = . %>% filter(days > 0)) +
-  scale_x_date(breaks = unique(ct_proj$date), date_labels = "%b %e") +
-  scale_y_continuous(expand = expansion(mult = c(0.01, 0.1)), breaks = NULL) +
-  scale_fill_manual(values = pal) +
-  theme_din2() +
-  theme(legend.position = "none",
-        panel.grid.major.y = element_blank(),
-        plot.caption = element_text(margin = margin(2, 2, 1, 0, "lines"))) +
-  labs(x = NULL, y = NULL,
-       title = "We can save about 16,000 lives in Connecticut with 60 days of social distancing.\nThat's the number that die each year from heart disease, stroke, and cancer combined.",
-       subtitle = "Estimated COVID-19-related deaths avoided in Connecticut versus social distancing end date, 2020",
-       caption = "Source: DataHaven analysis of data from New York Times models, CDC 2014–2016 mortality counts (WONDER),\nand US Census Bureau 2019 population estimates.")
-
-```
-
-
-
-
-
-
-
-
 
