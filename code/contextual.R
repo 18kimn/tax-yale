@@ -105,7 +105,9 @@ pov <- map_dfr(races, function(race){
 race_df <- context_data %>% 
   filter(str_detect(variable, "B02001|B03002"), race != "T") %>% 
   #B03002 is nonhispanic white and ihspanic
-  select(-variable)
+  select(-variable) %>% 
+  group_by(GEOID) %>% 
+  mutate(race_prop = estimate/sum(estimate))
 
 contextual_full <- list(edu, pov, ins, mobi, race_df, rent) %>% 
   reduce(full_join, by = c("GEOID", "race"))

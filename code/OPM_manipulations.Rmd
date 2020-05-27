@@ -5,8 +5,9 @@ date: "3/8/2020"
 output: html_document
 ---
 
-```{r}
+```{r, include = F}
 library(tidyverse)
+library(here)
 ```
 
 Merge OPM and geocoder_output
@@ -18,7 +19,7 @@ OPM_nhv_only_geocoded$FIPS <- ifelse(is.na(OPM_nhv_only_geocoded$State), NA, pas
 write.csv(OPM_nhv_only_geocoded, here::here("data/OPM data/OPM_nhv_only_geocoded.csv"))
 ```
 
-Choose non-matches + certain variables for manual edits
+Choose non-matches + certain variables for manual editsokay
 ```{r}
 manual_edits <- OPM_nhv_only_geocoded %>% 
   as_tibble() %>% 
@@ -27,3 +28,42 @@ manual_edits <- OPM_nhv_only_geocoded %>%
 write.csv(as.data.frame(manual_edits), here::here("data/OPM data/manual_edits.csv"))
 ```
 
+
+merging manual edits and opm-nhv_only_geocoded.csv
+```{r}
+manual_edits <- read_csv(here("data/OPM data/manual_edits_2.csv")) %>% 
+  select(Unique.ID, newadd = Address_out, new_coords = Coords, new_fips = FIPS, Park, Parking_lot) %>% 
+  mutate(new_coords = str_replace_all(new_coords, " Y:", ",")) %>% 
+  mutate_at(vars(Park, Parking_lot), ~ifelse(!is.na(.) & . == 1, T, F)) %>% 
+  filter(!is.na(new_coords)) 
+
+opm <- read_csv(here("data/OPM data/OPM_nhv_only_geocoded.csv"))
+
+#quick cheeck -- if manual_edits is a subset of opm, the following should be return 0
+# map(manual_edits$Unique.ID, function(x) !(x %in% opm$Unique.ID)) %>% unlist %>% sum
+#alright we gucci folx
+
+opm_full <- left_join(opm, manual_edits, by = "Unique.ID") %>% 
+  mutate(Coords = ifelse(!is.na(new_coords), new_coords, Coords), 
+         FIPS = ifelse(!is.na(new_fips), new_fips, FIPS),
+         Address_out = ifelse(is.na(Address_out), newadd, Address_out)) %>% 
+  select(-new_coords, -new_fips)
+#28 addresses are NAs -- mostly addresses that begin with "00000" that don't perfectly make sense
+
+
+#some additional cleaning to make it map-friendly
+
+opm_full <- opm_full %>% 
+  separate(Coords, into = c("long", "lat"), sep = ",") %>% 
+  mutate_at(vars(long, lat), str_trim) %>% 
+  mutate_at(vars(Address_out, Owner.Or.Facility), str_to_title) %>% 
+  select(-X1)
+
+write_csv(opm_full, here("data/OPM data/opm clean.csv"))
+
+
+```
+
+```{r}
+
+```

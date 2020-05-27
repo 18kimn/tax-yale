@@ -74,6 +74,8 @@ full <- full %>%
          ZIP = "") %>% 
   select(`Unique ID`, `Street address` = address, 
          City, State, ZIP)
+
+
 write_csv(full[1:9999,], "data/raw/property/merged (pre-geocoding)/property_info1.csv")
 write_csv(full[10000:19998,], "data/raw/property/merged (pre-geocoding)/property_info2.csv")
 write_csv(full[19999:nrow(full),], "data/raw/property/merged (pre-geocoding)/property_info3.csv")
