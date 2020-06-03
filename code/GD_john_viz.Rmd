@@ -10,9 +10,18 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 ```{r}
 library(tidyverse)
+library(tidycensus)
 library(sf)
 library(sp)
 ```
+
+## Unemployment
+see ses_ancestry_pums.Rmd
+```{r}
+
+
+```
+
 
 ## NHV property data (all 2017 numbers)
 ```{r}
