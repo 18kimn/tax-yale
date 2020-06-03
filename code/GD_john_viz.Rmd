@@ -19,29 +19,31 @@ library(srvyr)
 
 ## Unemployment
 see ses_ancestry_pums.Rmd
-```{r}
-ddi <- read_ipums_ddi("../data/raw/pums/usa_00001.xml")
-pums_data <- read_ipums_micro(ddi, verbose = FALSE)
-```
-```{r}
-pums <- pums_data %>%
+```{r, eval=FALSE}
+emp_ddi <- read_ipums_ddi("../data/raw/pums/usa_00001.xml")
+emp_pums_data <- read_ipums_micro(ddi, verbose = FALSE)
+emp_pums <- pums_data %>%
 	mutate_at(vars(EMPSTAT, EMPSTATD), as_factor) %>%
 	mutate_at(vars(PERWT, HHWT), as.numeric) %>%
 	janitor::clean_names()
-
 emp_des <- pums %>% 
 	filter(empstat != "N/A") %>% 
-	as_survey_design(., ids = 1, wt = perwt)
-
-emp_race <- emp_des %>%
+	as_survey_design(., ids = 1, wt = perwt) %>%
 	filter(!grepl("Armed", empstatd),
-				 empstat != "Not in labor force") %>% 
-	select(perwt, race2, empstat) %>% 
-	group_by(race2, empstat) %>% 
+				 empstat != "Not in labor force")
+
+save(emp_des, file="../data/raw/pums/employment_des.RData")
+```
+```{r}
+load("../data/raw/pums/employment_des.RData")
+emp_counts <- emp_des  %>% 
+	select(year, perwt, empstat) %>% 
+	group_by(year, empstat) %>% 
 	summarise(count = survey_total(perwt)) %>% 
-	ungroup() %>% 
-	group_by(race2) %>% 
+  ungroup() %>% 
 	mutate(share = count / sum(count))
+
+emp_counts
 ```
 
 
@@ -53,7 +55,7 @@ full_df <- readRDS("../data/raw/property/full_df.RDS")
 # function to get assessment
 get_ass <- function(pid) {
   file <- paste0("../data/raw/property/valuations/", pid, ".RDS")
-  dat <- readRDS(file)[[1]] 
+  dat <- readRDS(file)[[1]]
   if(dat[1,1] != "No Data for Assessment History") {
     assessment <- dat %>% 
       dplyr::filter(`Valuation Year` == 2017) %>% 
