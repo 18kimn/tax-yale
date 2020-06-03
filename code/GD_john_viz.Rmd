@@ -13,14 +13,46 @@ library(tidyverse)
 library(tidycensus)
 library(sf)
 library(sp)
+library(ipumsr)
 ```
 
 ## Unemployment
 see ses_ancestry_pums.Rmd
 ```{r}
-
-
+ddi <- read_ipums_ddi("../data/raw/pums/usa_00001.xml")
+pums_data <- read_ipums_micro(ddi, verbose = FALSE)
 ```
+```{r}
+pums <- pums_data %>%
+	mutate_at(vars(OWNERSHP, RACE, HISPAN, BPL, ANCESTR1, ANCESTR1D, EDUC, EDUCD,
+								 EMPSTAT, EMPSTATD, LABFORCE, VEHICLES, AGE), as_factor) %>%
+	mutate_at(vars(PERWT, HHWT), as.numeric) %>% 
+	mutate(race2 = if_else(HISPAN == "Not Hispanic", as.character(RACE), "Latino")) %>% 
+	mutate(race2 = as.factor(race2) %>% 
+				 	fct_recode(Black = "Black/African American/Negro") %>%
+				 	fct_other(keep = c("White", "Black", "Latino"), other_level = "Other race") %>%
+				 	fct_relevel("White", "Black", "Latino")) %>% 
+	mutate(VEHICLES = as.character(VEHICLES)) %>%
+	mutate(VEHICLES = if_else(VEHICLES == "6 (6+, 2000, ACS and PRCS)", "6", VEHICLES)) %>%
+	mutate(VEHICLES = if_else(VEHICLES == "No vehicles available", "0", VEHICLES)) %>%
+	mutate(VEHICLES = if_else(VEHICLES == "1 available", "1", VEHICLES)) %>%
+	mutate(VEHICLES = as.integer(VEHICLES)) %>%
+	left_join(pob, by = c("BPL" = "state_name")) %>% 
+	mutate(birthplace = replace_na(birthplace, "Foreign born")) %>% 
+	mutate(birthplace = as.factor(birthplace) %>% 
+				 	fct_relevel("Born in US", "Born in US Territory", "Foreign born")) %>% 
+	mutate(AGE = as.character(AGE)) %>%
+	mutate(AGE = if_else(AGE == "Less than 1 year old", "0.5", AGE)) %>%
+	mutate(AGE = if_else(AGE == "90 (90+ in 1980 and 1990)", "90", AGE)) %>%
+	mutate(AGE = as.numeric(AGE)) %>%
+	left_join(ancestry_grps, by = c("ANCESTR1", "ANCESTR1D")) %>% 
+	left_join(ed_levels, by = c("EDUC", "EDUCD")) %>% 
+	mutate(EDU2 = as.factor(EDU2) %>% 
+				 	fct_relevel("Less than HS", "HS or GED" , "Some college / AA",
+				 							"Bachelors", "Post-graduate")) %>% 
+	janitor::clean_names()
+```
+
 
 
 ## NHV property data (all 2017 numbers)
