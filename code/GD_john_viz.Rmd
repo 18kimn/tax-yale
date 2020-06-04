@@ -17,36 +17,20 @@ library(ipumsr)
 library(srvyr)
 ```
 
-## Unemployment
-see ses_ancestry_pums.Rmd
-```{r, eval=FALSE}
-emp_ddi <- read_ipums_ddi("../data/raw/pums/usa_00001.xml")
-emp_pums_data <- read_ipums_micro(ddi, verbose = FALSE)
-emp_pums <- pums_data %>%
-	mutate_at(vars(EMPSTAT, EMPSTATD), as_factor) %>%
-	mutate_at(vars(PERWT, HHWT), as.numeric) %>%
-	janitor::clean_names()
-emp_des <- pums %>% 
-	filter(empstat != "N/A") %>% 
-	as_survey_design(., ids = 1, wt = perwt) %>%
-	filter(!grepl("Armed", empstatd),
-				 empstat != "Not in labor force")
+## Research
 
-save(emp_des, file="../data/raw/pums/employment_des.RData")
-```
-```{r}
-load("../data/raw/pums/employment_des.RData")
-emp_counts <- emp_des  %>% 
-	select(year, perwt, empstat) %>% 
-	group_by(year, empstat) %>% 
-	summarise(count = survey_total(perwt)) %>% 
-  ungroup() %>% 
-	mutate(share = count / sum(count))
+**Mark Mininberg**
+By 1930, Yale property had been worth an amount equal to over ten per-cent of the city’s grand list of taxable property. The university increased its tax-exempt land by approximately 20 percent between 1930 and 1933. The decrease in the grand list which resulted cut further into the city’s already limited tax base, while Yale continued to receive free police and fire protection and use of the sewage system.
 
-emp_counts
-```
+Harvard, aware of the damage excessive tax exemptions caused Cambridge, had agreed in 1928 to pay moderate taxes on its properties.
 
+In all, thirty-five buildings would be built from 1929 to 1937 at a cost of $52 million.
 
+The first week of June [i think 1937], Murphy met with Yale President Rowland Angell and members of the Corporation at Woodbridge Hall to try to persuade them to make some small contribution to the relief of the people. Yale’s endowment had grown fourfold since 1921, from $25.7 million to $107.6 million, and the mayor naively anticipated some kind of positive response. He had, after all, welcomed Angell to New Haven.
+
+**McCullough**
+*From Margaret Hogg and Ralph Hurlin’s The Incidence of Work Shortage in New Haven, CT, as seen in Douglas Rae, City: Urbanism and Its End (New Haven: Yale University Press, 2003), 239.*
+By 1931, about 10,000 New Haveners, an unprecedented number in a city of only 162,000, were out of work; many more faced reduced hours and wages. As researcher Margaret Hogg reports, “About 3,400 families had all their earners idle, and these contained about 10,900 persons of whom 3,100 were children under fourteen years of age. In addition, about 17,850 families had some work shortage.
 
 ## NHV property data (all 2017 numbers)
 ```{r}
