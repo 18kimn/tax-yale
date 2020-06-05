@@ -55,7 +55,7 @@ By 1931, about 10,000 New Haveners, an unprecedented number in a city of only 16
 
 ## Contextual points
 * 1931: unemployment reaches about 10,000 (6.2%), many more face reduced hours and wages
-* 1930-1933: university increases tax-exempt land by ~20 percent
+* 1933: in past 2 years, university has increased tax-exempt land by ~20 percent
 * 1929-1937: 35 buildings built at cost of $52 million
 
 
@@ -86,6 +86,12 @@ yale_annual <- yale %>%
   group_by(year_built) %>% 
   summarise(assessment=sum(assessment)/1e6, tax=sum(tax)/1e6) %>% 
   mutate(is_gd = as.factor(year_built >= 1929 & year_built <= 1935))
+
+yale_cum <- yale_annual %>% 
+  filter(year_built >= 1929 & year_built <= 1935) %>% 
+  mutate(ass_cum = cumsum(assessment)) %>% 
+  select(year_built, ass_cum) %>% 
+  mutate(pct_growth = (ass_cum - 32.69777)/32.69777)
 ```
 ```{r}
 theme_nkjp <- function(base_size = 14, base_family = "ubuntu") {
@@ -110,7 +116,7 @@ theme_nkjp <- function(base_size = 14, base_family = "ubuntu") {
 
 ```{r}
 plot1 <- yale_annual %>% ggplot(aes(x=year_built, y=assessment)) +
-  geom_rect(aes(xmin = 1928.75, xmax = 1935.25, ymin = 0, ymax = Inf, fill = "GREEN", color="GREEN"), alpha = 0.05) +
+  geom_rect(aes(xmin = 1928.75, xmax = 1935.25, ymin = 0, ymax = Inf, fill = "GREEN", color="GREEN"), alpha = 0.03) +
   geom_point(size = 3, color="gray30") +
   theme_nkjp() +
   theme(legend.position = "none",
@@ -123,6 +129,20 @@ plot1 <- yale_annual %>% ggplot(aes(x=year_built, y=assessment)) +
   scale_y_continuous(labels=scales::dollar_format(prefix="$ ", suffix=" M"))
 
 ggsave("../viz/JP_plot1.png", width = 7, height = 4)
+```
+```{r}
+plot1 + 
+  annotate(geom = "segment", x = 1931.1, y = 50, xend = 1931.03, yend = 61) +
+  annotate(geom = "text", x = 1929.5, y = 38, 
+           label = "About 10,000 New Haven\nresidents (6.2%) are unemployed", hjust = "left", size=3)  + 
+  annotate(geom = "segment", x = 1933, y = 194, xend = 1932.2, yend = 194) +
+  annotate(geom = "text", x = 1933.1, y = 194, 
+           label = "Yale builds HGS, PWG, Grace Hopper", hjust = "left", size=3) +
+ annotate(geom = "segment", x = 1934, y = 101.80583, xend = 1933.2, yend = 101.80583) +
+  annotate(geom = "text", x = 1934.1, y = 101.80583, 
+           label = "In the past 2 years, Yale has increased\ntax-exempt land by ~20%", 
+           hjust = "left", size=3)
+
 ```
 
 
@@ -238,6 +258,7 @@ dixwellave_df_res %>% arrange(desc(assessment))
 ## GD Data
 ```{r}
 GD_raw <- readxl::read_excel("../data/clean/Great Depression Buildings.xlsx") %>% janitor::clean_names()
+GD_raw %>% filter(year_built == "1932")
 GD_df <- GD_raw %>% 
   select(appraisal = x2019_appraisal, assessment = x2019_assessment, exemption = current_tax_exemption, everything()) %>% 
   mutate(year_built=as.numeric(year_built)) %>% 
