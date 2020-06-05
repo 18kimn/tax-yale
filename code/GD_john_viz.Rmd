@@ -13,8 +13,6 @@ library(tidyverse)
 library(tidycensus)
 library(sf)
 library(sp)
-library(ipumsr)
-library(srvyr)
 ```
 
 ## Research
@@ -31,6 +29,22 @@ The first week of June [i think 1937], Murphy met with Yale President Rowland An
 **McCullough**
 *From Margaret Hogg and Ralph Hurlin’s The Incidence of Work Shortage in New Haven, CT, as seen in Douglas Rae, City: Urbanism and Its End (New Haven: Yale University Press, 2003), 239.*
 By 1931, about 10,000 New Haveners, an unprecedented number in a city of only 162,000, were out of work; many more faced reduced hours and wages. As researcher Margaret Hogg reports, “About 3,400 families had all their earners idle, and these contained about 10,900 persons of whom 3,100 were children under fourteen years of age. In addition, about 17,850 families had some work shortage.
+
+
+## Contextual points
+* 1931: unemployment reaches about 10,000 (6.2%), many more face reduced hours and wages
+* 1930-1933: university increases tax-exempt land by ~20 percent
+* 1929-1937: 35 buildings built at cost of $52 million
+
+## Using use_this
+```{r}
+use_this <- readRDS("../data/clean/use_this.RDS")
+use_this %>% names()
+```
+
+
+
+
 
 ## NHV property data (all 2017 numbers)
 ```{r}
@@ -106,7 +120,6 @@ dixwell_df %>% summarize(tot = sum(tax))
 dixwell_df %>% arrange(desc(assessment))
 ```
 
-
 ## Newhallville
 ```{r}
 nhville_sf <- cwi::new_haven_sf %>% filter(name == "Newhallville")
@@ -170,15 +183,18 @@ dixwellave_df_res %>% arrange(desc(assessment))
 
 ## GD Data
 ```{r}
-raw <- readxl::read_excel("../data/clean/Great Depression Buildings.xlsx") %>% janitor::clean_names()
-df <- raw %>% select(exemption = current_tax_exemption, year=year_built) %>% 
-  mutate(year=as.numeric(year)) %>% 
-  drop_na() %>% 
-  group_by(year) %>% 
-  summarise(val=sum(exemption)) %>% 
-  mutate(cum_val=cumsum(val))
+GD_raw <- readxl::read_excel("../data/clean/Great Depression Buildings.xlsx") %>% janitor::clean_names()
+GD_df <- GD_raw %>% 
+  select(appraisal = x2019_appraisal, assessment = x2019_assessment, exemption = current_tax_exemption, everything()) %>% 
+  mutate(year_built=as.numeric(year_built)) %>% 
+  filter(!is.na(year_built)) %>% 
+  mutate(location = ifelse(is.na(building), address, building)) %>% 
+  group_by(year_built) %>% 
+  summarise(appraisal=sum(appraisal), assessment=sum(assessment), exemption=sum(exemption), num_built=n()) %>% 
+  ungroup()
 ```
 
+## Viz 1: a failure
 ```{r}
 ref_1 <- dixwellave_df_res %>% summarize(tot = sum(tax)) %>% unlist()
 ref_2 <- 2500000
