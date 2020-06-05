@@ -10,9 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 ```{r}
 library(tidyverse)
-library(tidycensus)
 library(sf)
-library(sp)
 ```
 
 ## Research
@@ -36,10 +34,21 @@ By 1931, about 10,000 New Haveners, an unprecedented number in a city of only 16
 * 1930-1933: university increases tax-exempt land by ~20 percent
 * 1929-1937: 35 buildings built at cost of $52 million
 
+## Create use_this
+```{r}
+full_df <- readRDS("../data/raw/property/full_df.RDS")
+rawproperties <- read_sf(dsn="../data/arcgis_output/nhv_addresses_GeocodeAddress.shp")
+use_this <- rawproperties %>% bind_cols(full_df)
+```
+
+
 ## Using use_this
 ```{r}
-use_this <- readRDS("../data/clean/use_this.RDS")
-use_this %>% names()
+full_df <- readRDS("../data/raw/property/full_df.RDS")
+use_this_674 <- readRDS("../data/clean/use_this_674.RDS")
+use_this <- use_this_674 %>% 
+  
+  cbind(full_df)
 ```
 
 
@@ -48,7 +57,6 @@ use_this %>% names()
 
 ## NHV property data (all 2017 numbers)
 ```{r}
-full_df <- readRDS("../data/raw/property/full_df.RDS")
 
 # function to get assessment
 get_ass <- function(pid) {
