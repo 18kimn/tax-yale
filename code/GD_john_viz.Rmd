@@ -86,7 +86,6 @@ rawproperties <- read_sf(dsn="../data/clean/arcgis_output/nhv_addresses_GeocodeA
   bind_cols(select(full_df, -address, -owner))
 
 saveRDS(rawproperties, "../data/clean/use_this.RDS")
-
 ```
 
 ## Dixwell
