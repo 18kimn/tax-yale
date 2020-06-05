@@ -76,16 +76,6 @@ non_tax <- c(relig, other) %>%
 non_res <- c("llc", "partners", "conference", "inc", "supreme") %>% 
   paste(collapse="|") %>% 
   substr(0, nchar(.))
-
-# use sds674 files for point to address
-adds <- read_csv("../data/clean/nhv_addresses.csv") %>% 
-  dplyr::select(-`Unique ID`, -City, -State, -ZIP)
-properties <- read_csv("../data/clean/property_info.csv")
-rawproperties <- read_sf(dsn="../data/clean/arcgis_output/nhv_addresses_GeocodeAddress.shp") %>% 
-  bind_cols(adds) %>% 
-  bind_cols(select(full_df, -address, -owner))
-
-saveRDS(rawproperties, "../data/clean/use_this.RDS")
 ```
 
 ## Dixwell
